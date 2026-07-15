@@ -16,9 +16,37 @@ const cpsOut = document.getElementById("cps-out");
 const copyBtn = document.getElementById("copy");
 
 let lastCorrected = "";
+
+async function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // fall through to execCommand
+    }
+  }
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.setAttribute("readonly", "");
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  let ok = false;
+  try {
+    ok = document.execCommand("copy");
+  } catch {
+    ok = false;
+  }
+  ta.remove();
+  return ok;
+}
+
 copyBtn.addEventListener("click", async () => {
-  await navigator.clipboard.writeText(lastCorrected);
-  copyBtn.textContent = "Copied";
+  const ok = await copyText(lastCorrected);
+  copyBtn.textContent = ok ? "Copied" : "Copy failed";
   setTimeout(() => (copyBtn.textContent = "Copy"), 1200);
 });
 
