@@ -13,6 +13,14 @@ const stats = document.getElementById("stats");
 const samplesEl = document.getElementById("samples");
 const cpsIn = document.getElementById("cps-in");
 const cpsOut = document.getElementById("cps-out");
+const copyBtn = document.getElementById("copy");
+
+let lastCorrected = "";
+copyBtn.addEventListener("click", async () => {
+  await navigator.clipboard.writeText(lastCorrected);
+  copyBtn.textContent = "Copied";
+  setTimeout(() => (copyBtn.textContent = "Copy"), 1200);
+});
 
 const MAX_CPS = 300;
 const GLYPH_SUBST = new Map([[0x20, "␣"], [0x0a, "⏎"], [0x09, "⇥"], [0x200b, "ZW"]]);
@@ -93,6 +101,8 @@ function update() {
     stats.textContent = "";
     cpsIn.textContent = "";
     cpsOut.textContent = "";
+    lastCorrected = "";
+    copyBtn.disabled = true;
     return;
   }
   const t0 = performance.now();
@@ -107,16 +117,14 @@ function update() {
   render(corrected, siteInfo);
   renderCps(cpsIn, inCps, siteInfo);
   renderCps(cpsOut, outCps, siteInfo);
+  lastCorrected = corrected;
+  copyBtn.disabled = false;
   stats.textContent = sites.length
     ? `${sites.length} site${sites.length > 1 ? "s" : ""}, ${changed} corrected — ${ms.toFixed(0)} ms`
     : "no ្ត/្ដ sites in this text";
 }
 
-let timer = null;
-input.addEventListener("input", () => {
-  clearTimeout(timer);
-  timer = setTimeout(update, 150);
-});
+input.addEventListener("input", update);
 
 for (const s of SAMPLES) {
   const b = document.createElement("button");

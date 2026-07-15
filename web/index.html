@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Khmer ្ត/្ដ Corrector</title>
+<title>Khmer​ COENG TA/DA Corrector</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap" rel="stylesheet">
@@ -36,11 +36,19 @@
     color: var(--muted); background: var(--bg); border: 1px solid var(--border);
   }
   .samples button:hover { color: var(--text); border-color: var(--text); }
+  .out-wrap { position: relative; }
   .out {
     background: var(--bg); border: 1px solid var(--border);
-    padding: .9rem 1rem; font-size: 1.05rem; min-height: 3.4rem;
+    padding: .9rem 4.5rem .9rem 1rem; font-size: 1.05rem; min-height: 3.4rem;
     white-space: pre-wrap; overflow-wrap: anywhere;
   }
+  #copy {
+    position: absolute; top: .5rem; right: .5rem;
+    font: inherit; font-size: .75rem; padding: .12rem .6rem; cursor: pointer;
+    color: var(--muted); background: var(--bg); border: 1px solid var(--border);
+  }
+  #copy:hover { color: var(--text); border-color: var(--text); }
+  #copy:disabled { opacity: .4; cursor: default; }
   .out mark { padding: 0 1px; background: var(--mark-checked); color: inherit; }
   .out mark.changed { background: var(--mark-changed); color: var(--mark-changed-text); font-weight: 600; }
   .stats { color: var(--muted); font-size: .82rem; margin-top: .6rem; min-height: 1.2em; }
@@ -69,9 +77,9 @@
 </head>
 <body>
 <main>
-  <h1>Khmer ្ត / ្ដ Corrector</h1>
+  <h1>Khmer​ COENG TA/DA Corrector</h1>
   <p class="sub">
-    COENG TA (<code>្ត</code>) and COENG DA (<code>្ដ</code>) look identical, so they get
+    COENG TA and COENG DA look identical, so they get
     typed interchangeably. A 276k-param BiGRU — running entirely in your browser as
     SIMD WebAssembly, weights embedded in the module — predicts the correct one from context.
   </p>
@@ -81,7 +89,10 @@
   <div class="cps" id="cps-in"></div>
   <div class="samples" id="samples"></div>
 
-  <div class="out" id="output"><span class="loading">Loading model…</span></div>
+  <div class="out-wrap">
+    <div class="out" id="output"><span class="loading">Loading model…</span></div>
+    <button id="copy" disabled>Copy</button>
+  </div>
   <div class="stats" id="stats"></div>
   <div class="cps-label">Output code points</div>
   <div class="cps" id="cps-out"></div>
@@ -90,7 +101,7 @@
     <span class="l-checked">checked, already correct</span>
   </div>
 </main>
-<script src="ctda.js?v=2"></script>
-<script src="app.js?v=2"></script>
+<script src="ctda.js?v=3"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>
