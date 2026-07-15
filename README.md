@@ -2,7 +2,7 @@
 
 Khmer COENG TA (`្ត`) and COENG DA (`្ដ`) render identically, so they get typed
 interchangeably. This model predicts the orthographically correct consonant at
-every site from character context — a ~276k-param BiGRU, also available as a
+every site from character context — a ~635k-param BiLSTM, also available as a
 dependency-free C++ engine and a WASM browser demo.
 
 ## Python
@@ -30,7 +30,7 @@ cd web && python3 -m http.server 8791   # browser demo at :8791
 
 ## Training
 
-Labels come from ~1M lines of crawled Khmer text corrected against
+Labels come from ~15M lines of crawled Khmer text corrected against
 `khmerdict.txt`: real-world text overuses `្ត` ~8:1, so a boundary-aware
 substring matcher relabels sites to the dictionary spelling when unambiguous,
 keeps both labels for the ~70 dual-spelling words (e.g. កណ្តាល/កណ្ដាល), and
@@ -50,10 +50,10 @@ uv run python scripts/export_weights.py   # -> artifacts/model.bin for C++/WASM
 | | Accuracy | Macro-F1 |
 |---|---|---|
 | Majority baseline | 73.0% | 0.42 |
-| Corpus test split | 95.4% | 0.94 |
+| Corpus test split | 95.2% | 0.94 |
 | Held-out dictionary words in context | 96.0% | 0.93 |
 
-~0.6 ms/site (PyTorch, CPU batched) · ~2.4 ms/site (C++ native) · ~3.4 ms/site (WASM).
+~6.6 ms/site (C++ native, single thread) · ~8.2 ms/site (WASM SIMD).
 
 ## License
 

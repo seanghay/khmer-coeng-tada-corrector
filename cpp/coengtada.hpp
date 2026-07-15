@@ -1,4 +1,4 @@
-// coengtada: dependency-free C++17 inference for the Khmer COENG TA/DA BiGRU.
+// coengtada: dependency-free C++17 inference for the Khmer COENG TA/DA BiLSTM.
 //
 // Weights are read zero-copy from a caller-provided buffer (mmap'd file or a
 // data segment embedded in the wasm binary) in the format written by
@@ -82,8 +82,8 @@ inline float sigmoidf(float x) { return 1.f / (1.f + std::exp(-x)); }
 constexpr int PAD = 0, UNK = 1, LATIN = 2, DIGIT = 3;
 constexpr uint32_t COENG = 0x17D2, TA = 0x178F, DA = 0x178A;
 
-struct GruDir {
-  const float *w_ih, *w_hh, *b_ih, *b_hh;
+struct RnnDir {
+  const float *w_ih, *w_hh, *b_ih, *b_hh;  // LSTM: 4H x in, 4H x H, 4H, 4H
 };
 
 class Model {
@@ -100,7 +100,7 @@ class Model {
     hidden = (int)ru32(p);
     window = (int)ru32(p);
     uint32_t n_entries = ru32(p);
-    if (version != 1 || (size_t)(p - data) + n_entries * 8 > len) return false;
+    if (version != 2 || (size_t)(p - data) + n_entries * 8 > len) return false;
     vocab_.reserve(n_entries * 2);
     for (uint32_t i = 0; i < n_entries; ++i) {
       uint32_t cp = ru32(p), id = ru32(p);
@@ -109,16 +109,16 @@ class Model {
     const int H = hidden, E = emb_dim, I1 = 2 * H;
     const float* w = reinterpret_cast<const float*>(p);
     size_t need = (size_t)vocab_size * E;
-    for (int in : {E, I1}) need += 2 * ((size_t)3 * H * in + (size_t)3 * H * H + 6 * H);
+    for (int in : {E, I1}) need += 2 * ((size_t)4 * H * in + (size_t)4 * H * H + 8 * H);
     need += (size_t)H * I1 + H + 2 * H + 2;
     if ((size_t)(p - data) + need * 4 > len) return false;
     emb_ = take(w, (size_t)vocab_size * E);
-    for (GruDir* g : {&l0f_, &l0b_, &l1f_, &l1b_}) {
+    for (RnnDir* g : {&l0f_, &l0b_, &l1f_, &l1b_}) {
       int in = (g == &l0f_ || g == &l0b_) ? E : I1;
-      g->w_ih = take(w, (size_t)3 * H * in);
-      g->w_hh = take(w, (size_t)3 * H * H);
-      g->b_ih = take(w, (size_t)3 * H);
-      g->b_hh = take(w, (size_t)3 * H);
+      g->w_ih = take(w, (size_t)4 * H * in);
+      g->w_hh = take(w, (size_t)4 * H * H);
+      g->b_ih = take(w, (size_t)4 * H);
+      g->b_hh = take(w, (size_t)4 * H);
     }
     h0_w_ = take(w, (size_t)H * I1);
     h0_b_ = take(w, (size_t)H);
@@ -126,12 +126,13 @@ class Model {
     h1_b_ = take(w, 2);
     T_ = 2 * window + 1;
     x0_.resize((size_t)T_ * E);
-    proj_f_.resize((size_t)T_ * 3 * H);
-    proj_b_.resize((size_t)T_ * 3 * H);
+    proj_f_.resize((size_t)T_ * 4 * H);
+    proj_b_.resize((size_t)T_ * 4 * H);
     out0_.resize((size_t)T_ * I1);
     out1_.resize((size_t)T_ * I1);
     h_.resize(H);
-    hh_.resize(3 * H);
+    c_.resize(H);
+    hh_.resize(4 * H);
     head_tmp_.resize(H);
     return true;
   }
@@ -149,8 +150,8 @@ class Model {
     const int H = hidden, E = emb_dim, T = T_, I1 = 2 * H;
     for (int t = 0; t < T; ++t)
       std::memcpy(&x0_[(size_t)t * E], emb_ + (size_t)ids[t] * E, E * sizeof(float));
-    bigru_layer(l0f_, l0b_, x0_.data(), E, out0_.data());
-    bigru_layer(l1f_, l1b_, out0_.data(), I1, out1_.data());
+    bilstm_layer(l0f_, l0b_, x0_.data(), E, out0_.data());
+    bilstm_layer(l1f_, l1b_, out0_.data(), I1, out1_.data());
     const float* feat = &out1_[(size_t)window * I1];
     sgemv(h0_w_, feat, h0_b_, head_tmp_.data(), H, I1);
     for (int i = 0; i < H; ++i) head_tmp_[i] = head_tmp_[i] > 0.f ? head_tmp_[i] : 0.f;
@@ -172,30 +173,35 @@ class Model {
     return r;
   }
 
-  void gru_step(const GruDir& g, const float* ih, float* h) {
+  // PyTorch LSTM gate order: input, forget, cell (g), output.
+  void lstm_step(const RnnDir& g, const float* ih, float* h, float* c) {
     const int H = hidden;
-    sgemv(g.w_hh, h, g.b_hh, hh_.data(), 3 * H, H);
-    for (int i = 0; i < H; ++i) {
-      float r = sigmoidf(ih[i] + hh_[i]);
-      float z = sigmoidf(ih[H + i] + hh_[H + i]);
-      float n = std::tanh(ih[2 * H + i] + r * hh_[2 * H + i]);
-      h[i] = (1.f - z) * n + z * h[i];
+    sgemv(g.w_hh, h, g.b_hh, hh_.data(), 4 * H, H);
+    for (int j = 0; j < H; ++j) {
+      float i = sigmoidf(ih[j] + hh_[j]);
+      float f = sigmoidf(ih[H + j] + hh_[H + j]);
+      float gg = std::tanh(ih[2 * H + j] + hh_[2 * H + j]);
+      float o = sigmoidf(ih[3 * H + j] + hh_[3 * H + j]);
+      c[j] = f * c[j] + i * gg;
+      h[j] = o * std::tanh(c[j]);
     }
   }
 
   // x: T x in  ->  out: T x 2H (forward states | backward states)
-  void bigru_layer(const GruDir& f, const GruDir& b, const float* x, int in, float* out) {
+  void bilstm_layer(const RnnDir& f, const RnnDir& b, const float* x, int in, float* out) {
     const int H = hidden, T = T_;
-    sgemm_nt(x, f.w_ih, f.b_ih, proj_f_.data(), T, 3 * H, in);
-    sgemm_nt(x, b.w_ih, b.b_ih, proj_b_.data(), T, 3 * H, in);
+    sgemm_nt(x, f.w_ih, f.b_ih, proj_f_.data(), T, 4 * H, in);
+    sgemm_nt(x, b.w_ih, b.b_ih, proj_b_.data(), T, 4 * H, in);
     std::fill(h_.begin(), h_.end(), 0.f);
+    std::fill(c_.begin(), c_.end(), 0.f);
     for (int t = 0; t < T; ++t) {
-      gru_step(f, &proj_f_[(size_t)t * 3 * H], h_.data());
+      lstm_step(f, &proj_f_[(size_t)t * 4 * H], h_.data(), c_.data());
       std::memcpy(out + (size_t)t * 2 * H, h_.data(), H * sizeof(float));
     }
     std::fill(h_.begin(), h_.end(), 0.f);
+    std::fill(c_.begin(), c_.end(), 0.f);
     for (int t = T - 1; t >= 0; --t) {
-      gru_step(b, &proj_b_[(size_t)t * 3 * H], h_.data());
+      lstm_step(b, &proj_b_[(size_t)t * 4 * H], h_.data(), c_.data());
       std::memcpy(out + (size_t)t * 2 * H + H, h_.data(), H * sizeof(float));
     }
   }
@@ -203,9 +209,9 @@ class Model {
   std::unordered_map<uint32_t, int> vocab_;
   const float *emb_ = nullptr, *h0_w_ = nullptr, *h0_b_ = nullptr, *h1_w_ = nullptr,
               *h1_b_ = nullptr;
-  GruDir l0f_{}, l0b_{}, l1f_{}, l1b_{};
+  RnnDir l0f_{}, l0b_{}, l1f_{}, l1b_{};
   int T_ = 0;
-  std::vector<float> x0_, proj_f_, proj_b_, out0_, out1_, h_, hh_, head_tmp_;
+  std::vector<float> x0_, proj_f_, proj_b_, out0_, out1_, h_, c_, hh_, head_tmp_;
 };
 
 // ------------------------------------------------------------------- UTF-8

@@ -1,14 +1,18 @@
-"""Character-level BiGRU site classifier (~280k params)."""
+"""Character-level BiLSTM site classifier (~635k params)."""
 
 import torch
 import torch.nn as nn
 
+EMB_DIM = 64
+HIDDEN = 128
+
 
 class CoengTaDaNet(nn.Module):
-    def __init__(self, vocab_size: int, emb_dim: int = 48, hidden: int = 96, dropout: float = 0.2):
+    def __init__(self, vocab_size: int, emb_dim: int = EMB_DIM, hidden: int = HIDDEN,
+                 dropout: float = 0.2):
         super().__init__()
         self.emb = nn.Embedding(vocab_size, emb_dim, padding_idx=0)
-        self.gru = nn.GRU(
+        self.rnn = nn.LSTM(
             emb_dim,
             hidden,
             num_layers=2,
@@ -25,5 +29,5 @@ class CoengTaDaNet(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """x: (B, L) char ids with the site at the center index. Returns (B, 2) logits."""
-        out, _ = self.gru(self.emb(x))
+        out, _ = self.rnn(self.emb(x))
         return self.head(out[:, out.size(1) // 2])

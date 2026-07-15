@@ -16,14 +16,16 @@ import torch
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+VERSION = 2  # v2 = BiLSTM (v1 was BiGRU)
+
 TENSOR_ORDER = [
     "emb.weight",
-    "gru.weight_ih_l0", "gru.weight_hh_l0", "gru.bias_ih_l0", "gru.bias_hh_l0",
-    "gru.weight_ih_l0_reverse", "gru.weight_hh_l0_reverse",
-    "gru.bias_ih_l0_reverse", "gru.bias_hh_l0_reverse",
-    "gru.weight_ih_l1", "gru.weight_hh_l1", "gru.bias_ih_l1", "gru.bias_hh_l1",
-    "gru.weight_ih_l1_reverse", "gru.weight_hh_l1_reverse",
-    "gru.bias_ih_l1_reverse", "gru.bias_hh_l1_reverse",
+    "rnn.weight_ih_l0", "rnn.weight_hh_l0", "rnn.bias_ih_l0", "rnn.bias_hh_l0",
+    "rnn.weight_ih_l0_reverse", "rnn.weight_hh_l0_reverse",
+    "rnn.bias_ih_l0_reverse", "rnn.bias_hh_l0_reverse",
+    "rnn.weight_ih_l1", "rnn.weight_hh_l1", "rnn.bias_ih_l1", "rnn.bias_hh_l1",
+    "rnn.weight_ih_l1_reverse", "rnn.weight_hh_l1_reverse",
+    "rnn.bias_ih_l1_reverse", "rnn.bias_hh_l1_reverse",
     "head.0.weight", "head.0.bias", "head.3.weight", "head.3.bias",
 ]
 
@@ -39,7 +41,7 @@ def main():
     out = art / "model.bin"
     with open(out, "wb") as f:
         f.write(b"CTDA")
-        f.write(struct.pack("<6I", 1, cfg["vocab_size"], cfg["emb_dim"], cfg["hidden"],
+        f.write(struct.pack("<6I", VERSION, cfg["vocab_size"], cfg["emb_dim"], cfg["hidden"],
                             cfg["window"], len(stoi)))
         for ch, idx in sorted(stoi.items(), key=lambda kv: ord(kv[0])):
             assert len(ch) == 1

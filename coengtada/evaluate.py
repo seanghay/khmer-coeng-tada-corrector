@@ -82,7 +82,8 @@ def main():
 
     data_dir, art_dir = Path(args.data), Path(args.artifacts)
     vocab = Vocab.load(art_dir / "vocab.json")
-    device = "mps" if torch.backends.mps.is_available() else "cpu"
+    device = ("cuda" if torch.cuda.is_available()
+              else "mps" if torch.backends.mps.is_available() else "cpu")
     model = CoengTaDaNet(vocab.size).to(device)
     model.load_state_dict(torch.load(art_dir / "model.pt", map_location=device, weights_only=True))
     model.eval()

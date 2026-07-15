@@ -15,7 +15,7 @@ from tqdm import tqdm
 from .charset import Vocab
 from .data import SiteDataset, load_site_words, sampler_weights
 from .lexicon import load_dict_words
-from .model import CoengTaDaNet
+from .model import EMB_DIM, HIDDEN, CoengTaDaNet
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -87,7 +87,8 @@ def main():
                               num_workers=args.num_workers, persistent_workers=args.num_workers > 0)
     val_loader = DataLoader(val_ds, batch_size=512, num_workers=0)
 
-    device = "mps" if torch.backends.mps.is_available() else "cpu"
+    device = ("cuda" if torch.cuda.is_available()
+              else "mps" if torch.backends.mps.is_available() else "cpu")
     model = CoengTaDaNet(vocab.size).to(device)
     n_params = sum(p.numel() for p in model.parameters())
     print(f"device: {device}  params: {n_params:,}")
@@ -137,7 +138,7 @@ def main():
                     bad_evals = 0
                     torch.save(model.state_dict(), art_dir / "model.pt")
                     with open(art_dir / "config.json", "w") as f:
-                        json.dump({"vocab_size": vocab.size, "emb_dim": 48, "hidden": 96,
+                        json.dump({"vocab_size": vocab.size, "emb_dim": EMB_DIM, "hidden": HIDDEN,
                                    "window": 64, "best_val": m, "step": step}, f, indent=1)
                 else:
                     bad_evals += 1

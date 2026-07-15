@@ -1,5 +1,6 @@
 """Inference: correct COENG TA/DA sites in running text."""
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -24,7 +25,13 @@ class Corrector:
         self.vocab = Vocab.load(vocab_path)
         self.device = device
         self.batch_size = batch_size
-        self.model = CoengTaDaNet(self.vocab.size).to(device)
+        cfg_path = Path(model_path).parent / "config.json"
+        dims = {}
+        if cfg_path.exists():
+            with open(cfg_path) as f:
+                cfg = json.load(f)
+            dims = {"emb_dim": cfg["emb_dim"], "hidden": cfg["hidden"]}
+        self.model = CoengTaDaNet(self.vocab.size, **dims).to(device)
         self.model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
         self.model.eval()
 

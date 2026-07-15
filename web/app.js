@@ -164,7 +164,7 @@ for (const s of SAMPLES) {
   samplesEl.appendChild(b);
 }
 
-createCtda().then((m) => {
+createCtda({ locateFile: (path) => path + "?v=5" }).then((m) => {
   if (!m._ctda_init()) {
     output.textContent = "Failed to initialize model.";
     return;
