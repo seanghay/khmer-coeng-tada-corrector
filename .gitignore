@@ -12,5 +12,3 @@ wheels/
 # Generated data and model artifacts
 data/
 build/
-web/ctda.js
-web/ctda.wasm
