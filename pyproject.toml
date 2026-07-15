@@ -1,0 +1,25 @@
+[project]
+name = "coengtada"
+version = "0.1.0"
+description = "Khmer COENG TA (្ត) / COENG DA (្ដ) corrector — small char-level BiGRU with a dependency-free C++/WASM port"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Seanghay Yath" }]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=2.2.6",
+    "torch>=2.13.0",
+    "tqdm>=4.68.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*" = ["E402"]
+"tests/*" = ["E402"]

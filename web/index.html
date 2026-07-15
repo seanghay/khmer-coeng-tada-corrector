@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="km">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Khmer ្ត/្ដ Corrector</title>
+<style>
+  :root {
+    --bg: #faf9f7; --panel: #ffffff; --text: #1a1a1a; --muted: #6b6b6b;
+    --accent: #7c4dbe; --border: #e2e0dc;
+    --mark-changed: #ffe2a8; --mark-changed-text: #6b4700;
+    --mark-checked: #e8f2ea;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16151a; --panel: #201f26; --text: #eceae6; --muted: #97949e;
+      --accent: #b79aec; --border: #35333d;
+      --mark-changed: #5c4a14; --mark-changed-text: #ffd98a;
+      --mark-checked: #223327;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Noto Sans Khmer", "Khmer OS", sans-serif;
+    line-height: 1.6;
+  }
+  main { max-width: 780px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+  h1 { font-size: 1.35rem; margin: 0 0 .25rem; }
+  .sub { color: var(--muted); font-size: .9rem; margin-bottom: 1.5rem; }
+  .sub code { font-size: .85rem; }
+  textarea {
+    width: 100%; min-height: 7.5rem; resize: vertical; padding: .9rem 1rem;
+    font: inherit; font-size: 1.05rem; color: inherit;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    outline: none;
+  }
+  textarea:focus { border-color: var(--accent); }
+  .samples { display: flex; flex-wrap: wrap; gap: .5rem; margin: .75rem 0 1.5rem; }
+  .samples button {
+    font: inherit; font-size: .82rem; padding: .3rem .7rem; cursor: pointer;
+    color: var(--muted); background: var(--panel);
+    border: 1px solid var(--border); border-radius: 999px;
+  }
+  .samples button:hover { color: var(--text); border-color: var(--accent); }
+  .out {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: .9rem 1rem; font-size: 1.05rem; min-height: 3.4rem;
+    white-space: pre-wrap; overflow-wrap: anywhere;
+  }
+  .out mark { border-radius: 4px; padding: 0 1px; background: var(--mark-checked); color: inherit; }
+  .out mark.changed { background: var(--mark-changed); color: var(--mark-changed-text); font-weight: 600; }
+  .stats { color: var(--muted); font-size: .82rem; margin-top: .6rem; min-height: 1.2em; }
+  .legend { display: flex; gap: 1.2rem; margin-top: 1.1rem; color: var(--muted); font-size: .82rem; }
+  .legend span::before {
+    content: ""; display: inline-block; width: .85em; height: .85em;
+    border-radius: 3px; margin-right: .4em; vertical-align: -0.08em;
+  }
+  .legend .l-changed::before { background: var(--mark-changed); }
+  .legend .l-checked::before { background: var(--mark-checked); }
+  .loading { color: var(--muted); font-style: italic; }
+  footer { margin-top: 2.5rem; color: var(--muted); font-size: .78rem; }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Khmer ្ត / ្ដ Corrector</h1>
+  <p class="sub">
+    COENG TA (<code>្ត</code>) and COENG DA (<code>្ដ</code>) look identical, so they get
+    typed interchangeably. A 276k-param BiGRU — running entirely in your browser as
+    SIMD WebAssembly, weights embedded in the module — predicts the correct one from context.
+  </p>
+
+  <textarea id="input" placeholder="វាយ​អក្សរខ្មែរនៅទីនេះ…" autofocus></textarea>
+  <div class="samples" id="samples"></div>
+
+  <div class="out" id="output"><span class="loading">Loading model…</span></div>
+  <div class="stats" id="stats"></div>
+  <div class="legend">
+    <span class="l-changed">corrected</span>
+    <span class="l-checked">checked, already correct</span>
+  </div>
+
+  <footer>
+    Model + engine: <code>coengtada</code> — pure C++ BiGRU inference compiled to WASM,
+    no runtime dependencies. Hover a highlight to see P(ដ).
+  </footer>
+</main>
+<script src="ctda.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
